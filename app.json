@@ -3,13 +3,16 @@
     "name": "vanishing-hour-duo",
     "slug": "vanishing-hour-duo",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "scheme": "vanishinghourduo",
+    "orientation": "landscape",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.arjun.vanishinghourduo"
     },
     "android": {
+      "package": "com.arjun.vanishinghourduo",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +23,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-screen-orientation",
+      "expo-web-browser",
+      "expo-image"
+    ],
+    "extra": {
+      "googleAuth": {
+        "iosClientId": "",
+        "androidClientId": "",
+        "webClientId": ""
+      }
     }
   }
 }
