@@ -9,4 +9,6 @@ export type RootStackParamList = {
   Intro: { roomId: string; characterId?: string };
   Game: { roomId: string; characterId?: string };
   Beyond: { roomId: string; characterId?: string };
+  Cellar: { roomId: string; characterId?: string };
+  Library: { roomId: string; characterId?: string };
 };

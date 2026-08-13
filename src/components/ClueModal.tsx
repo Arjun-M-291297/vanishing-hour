@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ClueEntry } from '../types/study';
 import { Button } from './ui';
@@ -24,8 +24,8 @@ export function ClueModal({ clue, onDismiss }: Props) {
 
   return (
     <Modal visible={Boolean(clue)} transparent animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.backdrop}>
-        <View style={[styles.card, { maxHeight: compact ? '90%' : '80%' }]}>
+      <Pressable style={styles.backdrop} onPress={onDismiss}>
+        <Pressable style={[styles.card, { maxHeight: compact ? '90%' : '80%' }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.header}>
             <Text style={[styles.icon, compact && styles.iconCompact]}>{clue?.icon}</Text>
             <Text style={[styles.title, compact && styles.titleCompact]}>{clue?.title}</Text>
@@ -34,8 +34,8 @@ export function ClueModal({ clue, onDismiss }: Props) {
             <Text style={[styles.detail, compact && styles.detailCompact]}>{clue?.detail}</Text>
           </ScrollView>
           <Button title="Add to Notebook" onPress={onDismiss} />
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
