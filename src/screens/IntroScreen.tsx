@@ -18,7 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Intro'>;
 // pace. Not synchronized turn-by-turn: it's a shared cold open, not a
 // lockstep cutscene.
 export function IntroScreen({ route, navigation }: Props) {
-  const { roomId } = route.params;
+  const { roomId, characterId } = route.params;
   const [index, setIndex] = useState(0);
   const slide = introSlides[index];
   const isLast = index === introSlides.length - 1;
@@ -40,7 +40,7 @@ export function IntroScreen({ route, navigation }: Props) {
   }, [index, fade, rise, slideX]);
 
   const finish = () => {
-    navigation.replace('Game', { roomId });
+    navigation.replace('Game', { roomId, characterId });
   };
 
   const advance = () => {

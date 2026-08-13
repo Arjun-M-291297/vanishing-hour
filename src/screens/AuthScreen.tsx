@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen, Heading, BodyText, Button } from '../components/ui';
 import { signInWithGoogle, isGoogleAuthConfigured } from '../services/googleAuth';
 import { supabase } from '../services/supabase';
@@ -27,33 +27,36 @@ export function AuthScreen() {
   };
 
   return (
-    <Screen style={styles.screen}>
-      <View style={styles.content}>
-        <Heading style={styles.title}>THE VANISHING HOUR</Heading>
-        <BodyText style={styles.subtitle}>Two detectives. One vanished man. Sign in to open a case together.</BodyText>
+    <Screen>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          <Heading style={styles.title}>THE VANISHING HOUR</Heading>
+          <BodyText style={styles.subtitle}>Two detectives. One vanished man. Sign in to open a case together.</BodyText>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+          {error && <Text style={styles.error}>{error}</Text>}
 
-        <View style={styles.actions}>
-          <Button
-            title={googleConfigured ? 'Sign in with Google' : 'Google sign-in not configured'}
-            onPress={handleGoogle}
-            loading={busy === 'google'}
-            disabled={!googleConfigured || busy !== null}
-          />
-          <Button title="Continue as Guest" variant="secondary" onPress={handleGuest} loading={busy === 'guest'} disabled={busy !== null} />
+          <View style={styles.actions}>
+            <Button
+              title={googleConfigured ? 'Sign in with Google' : 'Google sign-in not configured'}
+              onPress={handleGoogle}
+              loading={busy === 'google'}
+              disabled={!googleConfigured || busy !== null}
+            />
+            <Button title="Continue as Guest" variant="secondary" onPress={handleGuest} loading={busy === 'guest'} disabled={busy !== null} />
+          </View>
+
+          {!googleConfigured && (
+            <Text style={styles.hint}>Add your Google OAuth client IDs to app.json (see SETUP.md) to enable Google sign-in.</Text>
+          )}
         </View>
-
-        {!googleConfigured && (
-          <Text style={styles.hint}>Add your Google OAuth client IDs to app.json (see SETUP.md) to enable Google sign-in.</Text>
-        )}
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { alignItems: 'center', justifyContent: 'center' },
+  scrollView: { flex: 1, backgroundColor: colors.ink },
+  screen: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   content: { width: '100%', maxWidth: 480, paddingHorizontal: spacing.xl },
   title: { fontSize: 22, textAlign: 'center', marginBottom: spacing.sm },
   subtitle: { textAlign: 'center', marginBottom: spacing.xl },

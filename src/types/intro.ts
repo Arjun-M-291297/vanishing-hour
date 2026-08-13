@@ -3,7 +3,8 @@ export type IntroPanelVisual =
   | 'worriedSilhouette'
   | 'twoSilhouettesDoor'
   | 'clockCloseup'
-  | 'emptyStudyNight';
+  | 'emptyStudyNight'
+  | 'stairSplit';
 
 export interface IntroSlide {
   id: string;
