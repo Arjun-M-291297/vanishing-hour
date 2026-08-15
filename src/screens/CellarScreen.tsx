@@ -23,8 +23,17 @@ import { DEV_SOLO_PREVIEW } from '../devFlags';
 type Props = NativeStackScreenProps<RootStackParamList, 'Cellar'>;
 
 const CELLAR_BG = require('../../assets/scenes/cellar.jpg');
-// Hotspot fractions were drawn against cellar.jpg's own dimensions
-// (1456x720), so the scene box is locked to that exact ratio.
+// Swapped in once the drawer traps the player and the power cuts — the
+// oil lantern is dark, but the fluorescent cell-box (the actual hotspot-4/
+// 5/6 puzzle object, down by the ledger) is already glowing, matching the
+// "an emergency lamp flickers on" toast.
+const CELLAR_FLOURO_ON_BG = require('../../assets/scenes/cellar_flouro_on.jpg');
+// Swapped in once all three cells are solved — the oil lantern is lit,
+// and its light now reveals the card-symbol mark on the wall (hotspot-13)
+// beside the grill door.
+const CELLAR_LANTERN_ON_BG = require('../../assets/scenes/cellar_lanern_on.jpg');
+// All three variants share cellar.jpg's own dimensions (1456x720), so
+// every hotspot fraction lands the same regardless of which is showing.
 const CELLAR_ASPECT_RATIO = 1456 / 720;
 // Same art as the Library's draggable piece — it's literally the same
 // physical page, just viewed from this side of the dumbwaiter.
@@ -110,6 +119,8 @@ export function CellarScreen({ route, navigation }: Props) {
   const hasTopHalf = solvedPuzzleIds.includes('hotspot-8');
   const imageCombined = collectedClueIds.includes('imageCombined');
   const trapped = collectedClueIds.includes('trapped');
+  const lanternLit = collectedClueIds.includes('lanternLit');
+  const sceneBackground = lanternLit ? CELLAR_LANTERN_ON_BG : trapped ? CELLAR_FLOURO_ON_BG : CELLAR_BG;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
@@ -260,7 +271,7 @@ export function CellarScreen({ route, navigation }: Props) {
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
           <View style={[styles.sceneBox, { aspectRatio: CELLAR_ASPECT_RATIO }]}>
-            <Image source={CELLAR_BG} style={styles.sceneImage} contentFit="cover" />
+            <Image source={sceneBackground} style={styles.sceneImage} contentFit="cover" transition={200} />
             <HotspotLayer
               hotspots={cellarHotspots}
               collectedClueIds={collectedClueIds}
@@ -270,7 +281,14 @@ export function CellarScreen({ route, navigation }: Props) {
               onSymbolLock={() => {}}
               onLocked={handleLocked}
             />
-            {hasTopHalf && (
+            {/* hotspot-17/18 and the red film all sit on the workbench —
+                which goes essentially pitch black the moment the power
+                cuts (see cellar_flouro_on.jpg/cellar_lanern_on.jpg), so
+                none of this renders once trapped is true. That's also
+                exactly when it stops mattering: trapped only becomes true
+                after hotspot-1's drawer (code 3907, same as what the red
+                film reveals here) is already open. */}
+            {hasTopHalf && !trapped && (
               // Purely a measurement anchor for DraggableProp's drop
               // hit-test — see dropTargetRef — sized to hotspot-18's
               // bounding box, invisible, never touchable. Rendered
@@ -290,7 +308,7 @@ export function CellarScreen({ route, navigation }: Props) {
                 ]}
               />
             )}
-            {hasTopHalf && !imageCombined && (
+            {hasTopHalf && !imageCombined && !trapped && (
               <DraggableProp
                 startBox={RECEIVED_IMAGE_BOX}
                 targetRef={dropTargetRef}
@@ -298,7 +316,7 @@ export function CellarScreen({ route, navigation }: Props) {
                 onDropped={handleImageCombined}
               />
             )}
-            {imageCombined && (
+            {imageCombined && !trapped && (
               <Image
                 source={RECEIVED_IMAGE}
                 style={[
@@ -315,7 +333,7 @@ export function CellarScreen({ route, navigation }: Props) {
                 transition={200}
               />
             )}
-            {imageCombined && (
+            {imageCombined && !trapped && (
               // No icon/imageSource — the red film is already drawn into
               // cellar.jpg at this spot, so this is purely an invisible
               // drag handle over the real art (see DraggableProp's hasVisual
