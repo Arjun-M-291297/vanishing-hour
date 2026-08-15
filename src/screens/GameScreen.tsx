@@ -20,6 +20,7 @@ import { leaveRoom } from '../services/rooms';
 import { supabase } from '../services/supabase';
 import { fetchRoomProgress, markPuzzleSolvedRemote, subscribeToProgress } from '../services/progress';
 import { CHARACTER_OPTIONS } from '../data/characters';
+import { DEV_SOLO_PREVIEW } from '../devFlags';
 import { colors, fonts, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
@@ -229,9 +230,21 @@ export function GameScreen({ route, navigation }: Props) {
           <View style={styles.sceneLabelBox}>
             <CaseFileLabel>{character ? `The Study — ${character.label}` : 'The Study'}</CaseFileLabel>
           </View>
-          <Pressable onPress={() => setNotebookOpen(true)} hitSlop={10} style={styles.notebookBtn}>
-            <Text style={styles.topBtnText}>📓 {collectedClues.length}</Text>
-          </Pressable>
+          <View style={styles.topRightGroup}>
+            {DEV_SOLO_PREVIEW && (
+              // Dummy shortcut for fast iteration on Cellar/Library while
+              // they're being built — skips the whole puzzle chain instead
+              // of re-solving it every reload. Gated behind the same dev
+              // flag as the solo-preview lobby buttons; flip that off before
+              // a real release and this disappears with it.
+              <Pressable onPress={handleContinueBeyond} hitSlop={10} style={styles.topBtn}>
+                <Text style={styles.topBtnText}>⏭ Skip</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => setNotebookOpen(true)} hitSlop={10} style={styles.notebookBtn}>
+              <Text style={styles.topBtnText}>📓 {collectedClues.length}</Text>
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
@@ -343,6 +356,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  topRightGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   topBtn: { backgroundColor: 'rgba(11,15,20,0.7)', paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: 8 },
   notebookBtn: { backgroundColor: 'rgba(11,15,20,0.7)', paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: 8 },
   topBtnText: { color: colors.paper, fontFamily: fonts.display, fontSize: 12 },

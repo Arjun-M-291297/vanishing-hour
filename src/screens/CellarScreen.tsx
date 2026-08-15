@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,9 +7,10 @@ import { RootStackParamList } from '../navigation/types';
 import { cellarHotspots } from '../data/cellar';
 import { ClueEntry, Hotspot } from '../types/study';
 import { HotspotLayer } from '../components/HotspotLayer';
+import { DraggableProp } from '../components/DraggableProp';
 import { ClueModal } from '../components/ClueModal';
+import { RedFilmModal } from '../components/RedFilmModal';
 import { NumberLockModal } from '../components/puzzles/NumberLockModal';
-import { SymbolLockModal } from '../components/puzzles/SymbolLockModal';
 import { NotebookSheet } from '../components/NotebookSheet';
 import { Toast } from '../components/Toast';
 import { CaseFileLabel, BodyText, Button } from '../components/ui';
@@ -17,23 +18,67 @@ import { leaveRoom } from '../services/rooms';
 import { supabase } from '../services/supabase';
 import { fetchRoomProgress, subscribeToProgress } from '../services/progress';
 import { colors, fonts, spacing } from '../theme';
+import { DEV_SOLO_PREVIEW } from '../devFlags';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Cellar'>;
 
-const CELLAR_BG = require('../../assets/scenes/cellar.png');
-// Not force-cropped to a round 2:1 like study.jpeg — the hotspot fractions
-// here were drawn against cellar.png's own dimensions (1386x685), so the
-// scene box is locked to that exact ratio instead, to keep hotspots
-// pixel-aligned without needing to touch the source image.
-const CELLAR_ASPECT_RATIO = 1386 / 685;
+const CELLAR_BG = require('../../assets/scenes/cellar.jpg');
+// Hotspot fractions were drawn against cellar.jpg's own dimensions
+// (1456x720), so the scene box is locked to that exact ratio.
+const CELLAR_ASPECT_RATIO = 1456 / 720;
+// Same art as the Library's draggable piece — it's literally the same
+// physical page, just viewed from this side of the dumbwaiter.
+const RECEIVED_IMAGE = require('../../assets/props/lower-torn-image.png');
+// hotspot-17 — not a tap target, just where the received image starts once
+// hotspot-8 (the chute lever) has been pulled; from there it's draggable.
+const RECEIVED_IMAGE_BOX = { x: 0.0805, y: 0.3374, w: 0.0687, h: 0.1909 };
 
-// The valve only becomes usable once both: (a) the Inspector has the valve
-// handle (solved boxB), and (b) the Associate has pulled the library lever
-// (a remote signal, not something visible in this room at all). Getting the
-// Detective out is knowledge- and action-gated across both rooms at once.
-const VALVE_HOTSPOT_ID = 'valve';
-const REQUIRED_LOCAL_PUZZLE_ID = 'boxB';
-const LEVER_SIGNAL_ID = 'lever';
+// hotspot-18 — where the reassembled photo settles once dragged there from
+// hotspot-17. A skewed quad rather than an axis-aligned box, since in the
+// art it's lying flat on an angled surface, not floating flush with the
+// screen.
+const COMBINED_IMAGE_QUAD: [number, number][] = [
+  [0.3541, 0.653],
+  [0.4423, 0.6216],
+  [0.3852, 0.5614],
+  [0.2971, 0.5797],
+];
+
+function quadBoundingBox(points: [number, number][]) {
+  const xs = points.map(([px]) => px);
+  const ys = points.map(([, py]) => py);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+
+// clip-path percentages are relative to the clipped element's own box, so
+// each quad corner is re-expressed as a fraction of the quad's own
+// bounding box (what the Image is actually sized to) rather than of the
+// whole scene image — this is what makes the placed photo conform to the
+// quad's skewed outline instead of sitting inside it as a plain rectangle.
+function quadClipPath(points: [number, number][], box: { x: number; y: number; w: number; h: number }) {
+  return `polygon(${points
+    .map(([px, py]) => `${(((px - box.x) / box.w) * 100).toFixed(2)}% ${(((py - box.y) / box.h) * 100).toFixed(2)}%`)
+    .join(', ')})`;
+}
+
+// hotspot-3's own position (the red film prop) — reused here as a drag
+// start box once the combined photo exists to hold it against; cellar.ts
+// still owns hotspot-3 as a tap target for its "not ready yet" flavor text
+// before that point.
+const RED_FILM_START_BOX = { x: 0.2184, y: 0.3821, w: 0.0782, h: 0.0588 };
+const OVERRIDE_CODE = '3 9 0 7';
+
+const COMBINED_IMAGE_BOX = quadBoundingBox(COMBINED_IMAGE_QUAD);
+// Web-only CSS (react-native-web passes unknown style keys straight
+// through), so it's kept out of the typed StyleSheet.create block below —
+// same pattern as DraggableProp's webNoDragStyle. No native equivalent
+// without an SVG mask, so on iOS/Android the placed photo just renders as
+// a plain rectangle inside the quad's bounding box.
+const webClipStyle: any = { clipPath: quadClipPath(COMBINED_IMAGE_QUAD, COMBINED_IMAGE_BOX) };
+
+const LANTERN_CELL_IDS = ['hotspot-4', 'hotspot-5', 'hotspot-6'];
 
 const clueRegistry: Record<string, ClueEntry> = Object.fromEntries(
   cellarHotspots
@@ -42,59 +87,115 @@ const clueRegistry: Record<string, ClueEntry> = Object.fromEntries(
 );
 
 export function CellarScreen({ route, navigation }: Props) {
-  const { roomId, characterId } = route.params;
+  const { roomId } = route.params;
 
+  // collectedClueIds doubles as the gate-flag store: real clue ids from
+  // observation hotspots, plus three synthetic markers pushed here directly
+  // ('trapped', 'lanternLit', 'grillUnlocked') that never resolve to a
+  // notebook entry (clueRegistry doesn't know them) but still work with
+  // requiresClueId on hotspot-4/5/6/13/14 — same mechanism, no new plumbing.
   const [collectedClueIds, setCollectedClueIds] = useState<string[]>([]);
   const [solvedPuzzleIds, setSolvedPuzzleIds] = useState<string[]>([]);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [activeClue, setActiveClue] = useState<ClueEntry | null>(null);
   const [activeLockPuzzle, setActiveLockPuzzle] = useState<Extract<Hotspot, { kind: 'numberLock' }> | null>(null);
-  const [activeSymbolPuzzle, setActiveSymbolPuzzle] = useState<Extract<Hotspot, { kind: 'symbolLock' }> | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string | null>(null);
-  const [leverPulled, setLeverPulled] = useState(false);
+  const [grillUnlocked, setGrillUnlocked] = useState(false);
   const [escaped, setEscaped] = useState(false);
+  const [redFilmModalOpen, setRedFilmModalOpen] = useState(false);
+  const dropTargetRef = useRef<View>(null);
 
   const collectedClues = collectedClueIds.map((id) => clueRegistry[id]).filter((c): c is ClueEntry => Boolean(c));
-  const hasValveHandle = solvedPuzzleIds.includes(REQUIRED_LOCAL_PUZZLE_ID);
+  const hasTopHalf = solvedPuzzleIds.includes('hotspot-8');
+  const imageCombined = collectedClueIds.includes('imageCombined');
+  const trapped = collectedClueIds.includes('trapped');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
   }, []);
 
-  // Only worth subscribing once the valve handle is actually in hand —
-  // before that, whether the lever's been pulled doesn't change anything
-  // the player can do yet.
+  // Only worth subscribing once the door's actually locked — before that,
+  // whether the Library has solved their half doesn't change anything the
+  // player can do yet.
   useEffect(() => {
-    if (!hasValveHandle || !myUserId) return;
-    const checkLever = async () => {
+    if (!trapped || !myUserId) return;
+    const checkGrill = async () => {
       const rows = await fetchRoomProgress(roomId);
-      const pulled = rows.some((row) => row.user_id !== myUserId && row.solved_puzzle_ids.includes(LEVER_SIGNAL_ID));
-      setLeverPulled(pulled);
+      const unlocked = rows.some((row) => row.user_id !== myUserId && row.solved_puzzle_ids.includes('grillUnlocked'));
+      if (unlocked) {
+        setGrillUnlocked(true);
+        setCollectedClueIds((ids) => (ids.includes('grillUnlocked') ? ids : [...ids, 'grillUnlocked']));
+      }
     };
-    checkLever();
-    return subscribeToProgress(roomId, checkLever);
-  }, [hasValveHandle, myUserId, roomId]);
+    checkGrill();
+    return subscribeToProgress(roomId, checkGrill);
+  }, [trapped, myUserId, roomId]);
 
   const handleObservation = (hotspot: Extract<Hotspot, { kind: 'observation' }>, alreadyFound: boolean) => {
     if (!alreadyFound) setCollectedClueIds((ids) => [...ids, hotspot.clue.id]);
     setActiveClue(hotspot.clue);
   };
 
-  const handleComingSoon = (hotspot: Extract<Hotspot, { kind: 'comingSoon' }>) => {
-    if (hotspot.id === VALVE_HOTSPOT_ID) {
-      if (!hasValveHandle) {
-        setToastMessage("The valve is jammed — you don't have anything to turn it with yet.");
-      } else if (!leverPulled) {
-        setToastMessage(
-          'You fit the valve handle and brace against it, but nothing gives. Whatever holds this shut, it isn\'t on this side.'
-        );
-      } else {
-        setEscaped(true);
+  const handleComingSoon = async (hotspot: Extract<Hotspot, { kind: 'comingSoon' }>) => {
+    if (hotspot.id === 'hotspot-8') {
+      if (hasTopHalf) {
+        setToastMessage('The chute is empty now.');
+        return;
       }
+      // In solo dev preview there's no Associate in another session to ever
+      // pull the Library lever and set 'imageSent' remotely, so this gate
+      // would block solo testing of everything past this point — skip the
+      // remote check and let the chute deliver on the first pull instead.
+      if (!DEV_SOLO_PREVIEW) {
+        const rows = await fetchRoomProgress(roomId);
+        const sent = rows.some((row) => row.solved_puzzle_ids.includes('imageSent'));
+        if (!sent) {
+          setToastMessage("The dumbwaiter sits empty. Nothing's come down yet.");
+          return;
+        }
+      }
+      setSolvedPuzzleIds((ids) => [...ids, 'hotspot-8']);
+      setToastMessage('The dumbwaiter clatters down. Inside: the missing half of a torn page.');
       return;
     }
+
+    if (hotspot.id === 'hotspot-3') {
+      if (solvedPuzzleIds.includes('hotspot-3')) {
+        setRedFilmModalOpen(true);
+        return;
+      }
+      if (!imageCombined) {
+        setToastMessage('A strip of stained red film. Useless without something to hold it against.');
+        return;
+      }
+      // Once the photo's combined, hotspot-3 is superseded by the
+      // DraggableProp overlay below — this only fires if a tap somehow
+      // lands here anyway (e.g. missed the drag start).
+      setToastMessage('Drag the film onto the joined page.');
+      return;
+    }
+
+    if (hotspot.id === 'hotspot-14') {
+      if (!grillUnlocked) {
+        setToastMessage("The padlock doesn't move — not from this side.");
+        return;
+      }
+      setEscaped(true);
+      return;
+    }
+
     setToastMessage(hotspot.message);
+  };
+
+  const handleImageCombined = () => {
+    setCollectedClueIds((ids) => (ids.includes('imageCombined') ? ids : [...ids, 'imageCombined']));
+    setToastMessage('The two halves settle together, flat against the stone.');
+  };
+
+  const handleRedFilmDropped = () => {
+    setSolvedPuzzleIds((ids) => (ids.includes('hotspot-3') ? ids : [...ids, 'hotspot-3']));
+    setRedFilmModalOpen(true);
   };
 
   const handleNumberLock = (hotspot: Extract<Hotspot, { kind: 'numberLock' }>) => {
@@ -103,24 +204,29 @@ export function CellarScreen({ route, navigation }: Props) {
 
   const handleNumberLockSolved = () => {
     if (!activeLockPuzzle) return;
-    setSolvedPuzzleIds((ids) => (ids.includes(activeLockPuzzle.id) ? ids : [...ids, activeLockPuzzle.id]));
-    setToastMessage(activeLockPuzzle.successMessage);
+    const id = activeLockPuzzle.id;
+    const successMessage = activeLockPuzzle.successMessage;
+    setSolvedPuzzleIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
     setActiveLockPuzzle(null);
-  };
+    setToastMessage(successMessage);
 
-  const handleSymbolLock = (hotspot: Extract<Hotspot, { kind: 'symbolLock' }>) => {
-    if (solvedPuzzleIds.includes(hotspot.id)) {
-      setToastMessage(hotspot.successMessage);
+    if (id === 'hotspot-1') {
+      setTimeout(() => {
+        setToastMessage("You move for the door — it doesn't budge. Somewhere close, an emergency lamp flickers on.");
+        setCollectedClueIds((ids) => (ids.includes('trapped') ? ids : [...ids, 'trapped']));
+      }, 1800);
       return;
     }
-    setActiveSymbolPuzzle(hotspot);
-  };
 
-  const handleSymbolLockSolved = () => {
-    if (!activeSymbolPuzzle) return;
-    setSolvedPuzzleIds((ids) => [...ids, activeSymbolPuzzle.id]);
-    setToastMessage(activeSymbolPuzzle.successMessage);
-    setActiveSymbolPuzzle(null);
+    if (LANTERN_CELL_IDS.includes(id)) {
+      const allLit = LANTERN_CELL_IDS.every((cellId) => cellId === id || solvedPuzzleIds.includes(cellId));
+      if (allLit) {
+        setTimeout(() => {
+          setToastMessage('The lantern catches — light floods back into the room.');
+          setCollectedClueIds((ids) => (ids.includes('lanternLit') ? ids : [...ids, 'lanternLit']));
+        }, 1600);
+      }
+    }
   };
 
   const handleLocked = (hotspot: Hotspot) => {
@@ -161,9 +267,67 @@ export function CellarScreen({ route, navigation }: Props) {
               onObservation={handleObservation}
               onComingSoon={handleComingSoon}
               onNumberLock={handleNumberLock}
-              onSymbolLock={handleSymbolLock}
+              onSymbolLock={() => {}}
               onLocked={handleLocked}
             />
+            {hasTopHalf && (
+              // Purely a measurement anchor for DraggableProp's drop
+              // hit-test — see dropTargetRef — sized to hotspot-18's
+              // bounding box, invisible, never touchable. Rendered
+              // unconditionally (not just pre-combine) since the red film
+              // drag below targets this same spot too.
+              <View
+                ref={dropTargetRef}
+                pointerEvents="none"
+                style={[
+                  styles.dropTarget,
+                  {
+                    left: `${COMBINED_IMAGE_BOX.x * 100}%`,
+                    top: `${COMBINED_IMAGE_BOX.y * 100}%`,
+                    width: `${COMBINED_IMAGE_BOX.w * 100}%`,
+                    height: `${COMBINED_IMAGE_BOX.h * 100}%`,
+                  },
+                ]}
+              />
+            )}
+            {hasTopHalf && !imageCombined && (
+              <DraggableProp
+                startBox={RECEIVED_IMAGE_BOX}
+                targetRef={dropTargetRef}
+                imageSource={RECEIVED_IMAGE}
+                onDropped={handleImageCombined}
+              />
+            )}
+            {imageCombined && (
+              <Image
+                source={RECEIVED_IMAGE}
+                style={[
+                  styles.combinedPhoto,
+                  webClipStyle,
+                  {
+                    left: `${COMBINED_IMAGE_BOX.x * 100}%`,
+                    top: `${COMBINED_IMAGE_BOX.y * 100}%`,
+                    width: `${COMBINED_IMAGE_BOX.w * 100}%`,
+                    height: `${COMBINED_IMAGE_BOX.h * 100}%`,
+                  },
+                ]}
+                contentFit="cover"
+                transition={200}
+              />
+            )}
+            {imageCombined && (
+              // No icon/imageSource — the red film is already drawn into
+              // cellar.jpg at this spot, so this is purely an invisible
+              // drag handle over the real art (see DraggableProp's hasVisual
+              // note). Left mounted permanently (not gated on hotspot-3
+              // being unsolved) so the film can be held against the page
+              // and re-read as many times as the player wants.
+              <DraggableProp
+                startBox={RED_FILM_START_BOX}
+                targetRef={dropTargetRef}
+                onDropped={handleRedFilmDropped}
+              />
+            )}
           </View>
 
           <View style={styles.descriptionBox}>
@@ -178,11 +342,11 @@ export function CellarScreen({ route, navigation }: Props) {
         <View style={styles.escapeOverlay}>
           <SafeAreaView style={styles.escapeSafe}>
             <View style={styles.escapeContent}>
-              <CaseFileLabel style={styles.escapeLabel}>The Gate Gives Way</CaseFileLabel>
+              <CaseFileLabel style={styles.escapeLabel}>The Grill Door Gives Way</CaseFileLabel>
               <BodyText style={styles.escapeText}>
-                The valve turns. Somewhere above, your partner threw the last lever, and the gate swings open. Inside
-                Box B, alongside the valve handle, was a stamped train ticket to Blackwood Station — 11:45 PM — and
-                Edmund's own hand confirming it: he left on his own terms, before the trouble took the rest of him.
+                The padlock falls away. The grill door swings open onto the tunnel — and the tracks beyond lead
+                straight toward Blackwood Station. Whatever happens next, it happens on a train Edmund never should
+                have needed to catch alone.
               </BodyText>
               <Button title="Leave Room" variant="secondary" onPress={handleLeaveRoom} />
             </View>
@@ -193,16 +357,16 @@ export function CellarScreen({ route, navigation }: Props) {
       <Toast message={toastMessage} onHide={() => setToastMessage(null)} />
       <NotebookSheet visible={notebookOpen} onClose={() => setNotebookOpen(false)} clues={collectedClues} />
       <ClueModal clue={activeClue} onDismiss={() => setActiveClue(null)} />
+      <RedFilmModal
+        visible={redFilmModalOpen}
+        imageSource={RECEIVED_IMAGE}
+        code={OVERRIDE_CODE}
+        onDismiss={() => setRedFilmModalOpen(false)}
+      />
       <NumberLockModal
         puzzle={activeLockPuzzle}
         onClose={() => setActiveLockPuzzle(null)}
         onSolved={handleNumberLockSolved}
-        onMistake={() => {}}
-      />
-      <SymbolLockModal
-        puzzle={activeSymbolPuzzle}
-        onClose={() => setActiveSymbolPuzzle(null)}
-        onSolved={handleSymbolLockSolved}
         onMistake={() => {}}
       />
     </View>
@@ -227,6 +391,16 @@ const styles = StyleSheet.create({
   scrollBody: { flexGrow: 1 },
   sceneBox: { width: '100%', overflow: 'hidden' },
   sceneImage: { width: '100%', height: '100%' },
+  combinedPhoto: {
+    position: 'absolute',
+    borderRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  dropTarget: { position: 'absolute' },
   descriptionBox: {
     margin: spacing.md,
     backgroundColor: 'rgba(11,15,20,0.78)',

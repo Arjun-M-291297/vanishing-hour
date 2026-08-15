@@ -25,10 +25,10 @@ export function NotebookSheet({ visible, onClose, clues }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-          <Pressable onPress={(e) => e.stopPropagation()}>
+          <Pressable style={styles.sheetBody} onPress={(e) => e.stopPropagation()}>
             <View style={styles.handle} />
             <Text style={styles.title}>Detective's Notebook</Text>
-            <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
               {clues.length === 0 && (
                 <Text style={styles.empty}>Nothing logged yet. Start looking around the room.</Text>
               )}
@@ -59,10 +59,19 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderBottomWidth: 0,
     maxHeight: '75%',
+    // Without this, content taller than maxHeight just overflows the card
+    // instead of clipping — which is also what was silently defeating the
+    // ScrollView below (nothing bounded its height, so it grew to fit its
+    // content like everything else instead of scrolling).
+    overflow: 'hidden',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
   },
+  // flexShrink lets this (and the ScrollView inside it) actually shrink
+  // below their natural content height once the sheet hits its maxHeight
+  // cap, instead of the handle/title/list all just rendering at full size.
+  sheetBody: { flexShrink: 1 },
   handle: {
     width: 40,
     height: 4,
@@ -72,7 +81,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   title: { fontFamily: fonts.display, color: colors.brassBright, fontSize: 16, marginBottom: spacing.md, textAlign: 'center' },
-  list: { marginBottom: spacing.sm },
+  list: { flexShrink: 1 },
+  listContent: { paddingBottom: spacing.sm },
   empty: { color: colors.paperDim, fontSize: 13, textAlign: 'center', paddingVertical: spacing.lg },
   entry: {
     flexDirection: 'row',
