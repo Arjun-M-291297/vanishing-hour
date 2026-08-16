@@ -12,6 +12,7 @@ import { ClueModal } from '../components/ClueModal';
 import { HintModal } from '../components/HintModal';
 import { SymbolLockModal } from '../components/puzzles/SymbolLockModal';
 import { NotebookSheet } from '../components/NotebookSheet';
+import { RevelationOverlay } from '../components/RevelationOverlay';
 import { Toast } from '../components/Toast';
 import { CaseFileLabel, BodyText, Button } from '../components/ui';
 import { leaveRoom } from '../services/rooms';
@@ -20,14 +21,16 @@ import { colors, fonts, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
-const LIBRARY_BG = require('../../assets/scenes/library.jpg');
-// Hotspot fractions were drawn against library.jpg's own dimensions
-// (1456x720), so the scene box is locked to that exact ratio. The torn
-// page's own art is a standalone cropped/cleaned-up sprite (not cut from
-// this file directly), positioned at PHOTO_START_BOX's fractions to sit
-// where the background used to show it before being healed.
+// Background swaps to the lever-down variant once hotspot-9 (the
+// dumbwaiter lever) is pulled — same state-driven swap pattern as the
+// Cellar's lever background. Both variants are the same near-identical
+// aspect ratio as the original library.jpg, so hotspot fractions (drawn
+// against that file's 1456x720) still line up without adjustment.
+const LIBRARY_LEVER_UP_BG = require('../../assets/scenes/library_lever_up.jpeg');
+const LIBRARY_LEVER_DOWN_BG = require('../../assets/scenes/library_lever_down.jpeg');
 const LIBRARY_ASPECT_RATIO = 1456 / 720;
 const TORN_PAGE_IMAGE = require('../../assets/scenes/torn_image_lower.png');
+const DUMBWAITER_IMAGE = require('../../assets/scenes/dumbwaiter.jpg');
 
 // hotspot-11's own position (drag start) and hotspot-16, the dumbwaiter
 // basket (drag target) — kept out of libraryHotspots since this isn't a
@@ -120,6 +123,7 @@ export function LibraryScreen({ route, navigation }: Props) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [dragScrollLocked, setDragScrollLocked] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
+  const [showDumbwaiterRevelation, setShowDumbwaiterRevelation] = useState(false);
   const dropTargetRef = useRef<View>(null);
 
   const collectedClues = collectedClueIds.map((id) => clueRegistry[id]).filter((c): c is ClueEntry => Boolean(c));
@@ -128,10 +132,12 @@ export function LibraryScreen({ route, navigation }: Props) {
   // action, solving it IS the ending, so this is derived rather than its
   // own piece of state.
   const symbolsSolved = solvedPuzzleIds.includes('hotspot-15');
+  const leverPulled = solvedPuzzleIds.includes('hotspot-9');
+  const sceneBackground = leverPulled ? LIBRARY_LEVER_DOWN_BG : LIBRARY_LEVER_UP_BG;
   const hintStage = getLibraryHintStage({
     symbolsSolved,
     imagePlaced: collectedClueIds.includes('imagePlaced'),
-    leverPulled: solvedPuzzleIds.includes('hotspot-9'),
+    leverPulled,
     timestampBookRead: collectedClueIds.includes('timestampBook'),
   });
 
@@ -148,10 +154,15 @@ export function LibraryScreen({ route, navigation }: Props) {
       }
       setSolvedPuzzleIds((ids) => [...ids, 'hotspot-9']);
       markPuzzleSolvedRemote(roomId, 'imageSent');
-      setToastMessage('You pull the lever. The basket rattles away down the shaft.');
+      setShowDumbwaiterRevelation(true);
       return;
     }
     setToastMessage(hotspot.message);
+  };
+
+  const handleDumbwaiterContinue = () => {
+    setShowDumbwaiterRevelation(false);
+    setToastMessage('You pull the lever. The basket rattles away down the shaft.');
   };
 
   // hotspot-11's art is visible (as a draggable prop, not a tap target —
@@ -231,7 +242,7 @@ export function LibraryScreen({ route, navigation }: Props) {
           scrollEnabled={!dragScrollLocked}
         >
           <View style={[styles.sceneBox, { aspectRatio: LIBRARY_ASPECT_RATIO }]}>
-            <Image source={LIBRARY_BG} style={styles.sceneImage} contentFit="cover" />
+            <Image source={sceneBackground} style={styles.sceneImage} contentFit="cover" />
             <HotspotLayer
               hotspots={libraryHotspots}
               collectedClueIds={collectedClueIds}
@@ -314,6 +325,16 @@ export function LibraryScreen({ route, navigation }: Props) {
             </View>
           </SafeAreaView>
         </View>
+      )}
+
+      {showDumbwaiterRevelation && (
+        <RevelationOverlay
+          visible
+          imageSource={DUMBWAITER_IMAGE}
+          label="Sent Down the Shaft"
+          caption="The lever gives, and the basket drops away into the dark — carrying the torn page down to wherever the Inspector's waiting below."
+          onContinue={handleDumbwaiterContinue}
+        />
       )}
 
       <Toast message={toastMessage} onHide={() => setToastMessage(null)} />

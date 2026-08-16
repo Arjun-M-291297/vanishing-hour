@@ -125,21 +125,19 @@ export const studyHotspots: Hotspot[] = [
       flavorText:
         "Tucked beneath a ledger, a scrap of paper in Edmund's hand — rows of numbers, nothing else. A childhood code between him and his brother: count each one out along the alphabet.",
       cipherGroups: [
-        [19, 5, 5, 11],
-        [20, 8, 5],
         [20, 8, 9, 18, 4],
         [19, 8, 5, 12, 6],
       ],
-      solution: "SEEK THE THIRD SHELF",
+      solution: "THIRD SHELF",
       rewardClue: {
         id: "shelfNote",
         title: "Coded Note: Third Shelf",
         detail:
-          'Decoded, the note reads plainly: "SEEK THE THIRD SHELF." Pressed into the paper beside it, four faint symbols — gone now that you\'ve looked away.',
+          'Decoded, the note reads plainly: "THIRD SHELF." Pressed into the paper beside it, four faint symbols — gone now that you\'ve looked away.',
         icon: "📜",
       },
       successMessage:
-        'The numbers resolve into letters: "SEEK THE THIRD SHELF." Whatever he hid, he hid it there.',
+        'The numbers resolve into letters: "THIRD SHELF." Whatever he hid, he hid it there.',
       next: {
         kind: "memorize",
         title: "A Second Impression",
@@ -162,7 +160,7 @@ export const studyHotspots: Hotspot[] = [
     h: 0.1224,
     requiresClueId: "shelfNote",
     silentLock: true,
-    puzzleTitle: "Third Shelf Latch",
+    puzzleTitle: "Third Shelf",
     flavorText:
       "A small brass fitting is set into the shelf's edge — four notches, each stamped with a different symbol. It wants to be turned in the order you saw them.",
     symbols: ["🌙", "💧", "⭐", "☀️"],
@@ -178,6 +176,6 @@ export const studyHotspots: Hotspot[] = [
     y: 0.0955,
     w: 0.2665,
     h: 0.2907,
-    message: "A hidden passage — coming in a future update.",
+    message: "",
   },
 ];
