@@ -12,7 +12,7 @@ interface Props {
   onDismiss: () => void;
 }
 
-const PHOTO_ASPECT_RATIO = 119 / 65;
+const PHOTO_ASPECT_RATIO = 227 / 85;
 
 export function RedFilmModal({ visible, imageSource, code, onDismiss }: Props) {
   useEffect(() => {

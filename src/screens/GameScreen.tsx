@@ -9,6 +9,7 @@ import { MemorizeSequencePuzzle, NumberCipherPuzzle, ClueEntry, Hotspot } from '
 import { HotspotLayer } from '../components/HotspotLayer';
 import { IntroPanelArt } from '../components/IntroPanelArt';
 import { ClueModal } from '../components/ClueModal';
+import { HintModal } from '../components/HintModal';
 import { NumberLockModal } from '../components/puzzles/NumberLockModal';
 import { NumberCipherModal } from '../components/puzzles/NumberCipherModal';
 import { MemorizeModal } from '../components/puzzles/MemorizeModal';
@@ -53,6 +54,61 @@ const clueRegistry: Record<string, ClueEntry> = Object.fromEntries(
   [...observationClues, ...chainedRewardClues].map((clue) => [clue.id, clue])
 );
 
+interface HintStage {
+  key: string;
+  title: string;
+  hints: string[];
+}
+
+// Only the three required, gate-blocking beats get a stage — the desk's
+// own chained cipher/memorize steps aren't included since once that chain
+// has actually started, the puzzle's own modal has the player's full
+// attention already and duplicating its guidance out here isn't useful;
+// the external hint only needs to point at the right thing to interact
+// with BEFORE that engagement starts. The flavor-only observation
+// hotspots (clock, prescription, armchair, etc.) aren't required to
+// progress, so they're not hinted toward either.
+function getStudyHintStage(state: { brassKey: boolean; shelfNote: boolean; stairRevealed: boolean }): HintStage | null {
+  if (state.stairRevealed) return null;
+
+  if (!state.brassKey) {
+    return {
+      key: 'painting',
+      title: 'The Crooked Painting',
+      hints: [
+        "Something in this room doesn't sit quite straight.",
+        'A landscape painting on the wall is hanging slightly crooked — worth a closer look.',
+        'Check behind the painting itself, not just at it.',
+        "There's a small brass key taped to the wall behind the painting.",
+      ],
+    };
+  }
+
+  if (!state.shelfNote) {
+    return {
+      key: 'desk',
+      title: 'The Locked Desk',
+      hints: [
+        'That brass key has to open something.',
+        "There's a locked desk drawer across the room — though the key doesn't turn in it directly.",
+        'Look for a number instead. Something in the room hints at four digits.',
+        "The stopped clock's hands are frozen at eleven and twenty-three — the code is 1123.",
+      ],
+    };
+  }
+
+  return {
+    key: 'shelf',
+    title: 'The Third Shelf',
+    hints: [
+      'The note in the drawer pointed somewhere specific.',
+      "There's a third shelf in this room with its own latch — four notches, each marked with a symbol.",
+      'Enter them in the order you saw them flash in the note\'s impression.',
+      'The order is star, moon, sun, water drop.',
+    ],
+  };
+}
+
 // Both players land here after Begin Investigation, but each on their own
 // independent instance of the Study — no shared/synced hotspot state
 // between them, same as sitting side by side with two separate copies of
@@ -86,8 +142,14 @@ export function GameScreen({ route, navigation }: Props) {
   // gets there too (see the player_progress subscription below).
   const [stairRevealed, setStairRevealed] = useState(false);
   const [partnerAtStair, setPartnerAtStair] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
 
   const collectedClues = collectedClueIds.map((id) => clueRegistry[id]).filter((c): c is ClueEntry => Boolean(c));
+  const hintStage = getStudyHintStage({
+    brassKey: collectedClueIds.includes('brassKey'),
+    shelfNote: collectedClueIds.includes('shelfNote'),
+    stairRevealed,
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
@@ -241,6 +303,11 @@ export function GameScreen({ route, navigation }: Props) {
                 <Text style={styles.topBtnText}>⏭ Skip</Text>
               </Pressable>
             )}
+            {hintStage && (
+              <Pressable onPress={() => setHintOpen(true)} hitSlop={10} style={styles.notebookBtn}>
+                <Text style={styles.topBtnText}>💡</Text>
+              </Pressable>
+            )}
             <Pressable onPress={() => setNotebookOpen(true)} hitSlop={10} style={styles.notebookBtn}>
               <Text style={styles.topBtnText}>📓 {collectedClues.length}</Text>
             </Pressable>
@@ -329,6 +396,15 @@ export function GameScreen({ route, navigation }: Props) {
         onSolved={handleSymbolLockSolved}
         onMistake={() => {}}
       />
+      {hintStage && (
+        <HintModal
+          visible={hintOpen}
+          stageKey={hintStage.key}
+          title={hintStage.title}
+          hints={hintStage.hints}
+          onDismiss={() => setHintOpen(false)}
+        />
+      )}
     </View>
   );
 }

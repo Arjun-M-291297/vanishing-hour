@@ -9,6 +9,7 @@ import { ClueEntry, Hotspot } from '../types/study';
 import { HotspotLayer } from '../components/HotspotLayer';
 import { DraggableProp } from '../components/DraggableProp';
 import { ClueModal } from '../components/ClueModal';
+import { HintModal } from '../components/HintModal';
 import { SymbolLockModal } from '../components/puzzles/SymbolLockModal';
 import { NotebookSheet } from '../components/NotebookSheet';
 import { Toast } from '../components/Toast';
@@ -26,7 +27,7 @@ const LIBRARY_BG = require('../../assets/scenes/library.jpg');
 // this file directly), positioned at PHOTO_START_BOX's fractions to sit
 // where the background used to show it before being healed.
 const LIBRARY_ASPECT_RATIO = 1456 / 720;
-const TORN_PAGE_IMAGE = require('../../assets/props/lower-torn-image.png');
+const TORN_PAGE_IMAGE = require('../../assets/scenes/torn_image_lower.png');
 
 // hotspot-11's own position (drag start) and hotspot-16, the dumbwaiter
 // basket (drag target) — kept out of libraryHotspots since this isn't a
@@ -40,6 +41,74 @@ const clueRegistry: Record<string, ClueEntry> = Object.fromEntries(
     .map((h) => [h.clue.id, h.clue])
 );
 
+interface HintStage {
+  key: string;
+  title: string;
+  hints: string[];
+}
+
+// Checked top to bottom, first match wins — see the matching function in
+// CellarScreen.tsx for why this makes the hint button contextual rather
+// than a fixed walkthrough.
+function getLibraryHintStage(state: {
+  symbolsSolved: boolean;
+  imagePlaced: boolean;
+  leverPulled: boolean;
+  timestampBookRead: boolean;
+}): HintStage | null {
+  if (state.symbolsSolved) return null;
+
+  if (!state.imagePlaced) {
+    return {
+      key: 'photo',
+      title: 'The Torn Page',
+      hints: [
+        "There's a torn page sitting right where you started, waiting to be moved.",
+        "It doesn't belong where it's sitting — there's a basket nearby built for exactly this.",
+        'Drag the page into the dumbwaiter basket.',
+        'Drop it squarely in the basket to load it.',
+      ],
+    };
+  }
+
+  if (!state.leverPulled) {
+    return {
+      key: 'lever',
+      title: 'The Dumbwaiter Lever',
+      hints: [
+        "The basket won't send itself down.",
+        'Look for the lever that operates the dumbwaiter shaft.',
+        'Pull it once the page is loaded — not before.',
+        'Tap the lever to send the basket down to the Inspector.',
+      ],
+    };
+  }
+
+  if (!state.timestampBookRead) {
+    return {
+      key: 'timestamps',
+      title: 'The Timestamp Book',
+      hints: [
+        "There's a book nearby with more in it than it looks.",
+        "It's got a handwritten row of times — not just one.",
+        'Read the minutes (not the hours) off each of the three times, in order.',
+        "Pass those three numbers to the Inspector — they're the combination to something down in the cellar.",
+      ],
+    };
+  }
+
+  return {
+    key: 'symbols',
+    title: 'The Fallen Book',
+    hints: [
+      "The fallen book on the shelf isn't just fallen — it's a lock.",
+      'It wants four symbols, in a specific order.',
+      "Ask the Inspector what's marked on the cellar wall, now that their lantern's lit.",
+      'The order is hearts, clubs, spades, diamonds.',
+    ],
+  };
+}
+
 export function LibraryScreen({ route, navigation }: Props) {
   const { roomId } = route.params;
 
@@ -50,6 +119,7 @@ export function LibraryScreen({ route, navigation }: Props) {
   const [activeSymbolPuzzle, setActiveSymbolPuzzle] = useState<Extract<Hotspot, { kind: 'symbolLock' }> | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [dragScrollLocked, setDragScrollLocked] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
   const dropTargetRef = useRef<View>(null);
 
   const collectedClues = collectedClueIds.map((id) => clueRegistry[id]).filter((c): c is ClueEntry => Boolean(c));
@@ -58,6 +128,12 @@ export function LibraryScreen({ route, navigation }: Props) {
   // action, solving it IS the ending, so this is derived rather than its
   // own piece of state.
   const symbolsSolved = solvedPuzzleIds.includes('hotspot-15');
+  const hintStage = getLibraryHintStage({
+    symbolsSolved,
+    imagePlaced: collectedClueIds.includes('imagePlaced'),
+    leverPulled: solvedPuzzleIds.includes('hotspot-9'),
+    timestampBookRead: collectedClueIds.includes('timestampBook'),
+  });
 
   const handleObservation = (hotspot: Extract<Hotspot, { kind: 'observation' }>, alreadyFound: boolean) => {
     if (!alreadyFound) setCollectedClueIds((ids) => [...ids, hotspot.clue.id]);
@@ -136,9 +212,16 @@ export function LibraryScreen({ route, navigation }: Props) {
           <View style={styles.sceneLabelBox}>
             <CaseFileLabel>The Upper Library</CaseFileLabel>
           </View>
-          <Pressable onPress={() => setNotebookOpen(true)} hitSlop={10} style={styles.notebookBtn}>
-            <Text style={styles.topBtnText}>📓 {collectedClues.length}</Text>
-          </Pressable>
+          <View style={styles.topBarRight}>
+            {hintStage && (
+              <Pressable onPress={() => setHintOpen(true)} hitSlop={10} style={styles.notebookBtn}>
+                <Text style={styles.topBtnText}>💡</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => setNotebookOpen(true)} hitSlop={10} style={styles.notebookBtn}>
+              <Text style={styles.topBtnText}>📓 {collectedClues.length}</Text>
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView
@@ -242,6 +325,15 @@ export function LibraryScreen({ route, navigation }: Props) {
         onSolved={handleSymbolLockSolved}
         onMistake={() => {}}
       />
+      {hintStage && (
+        <HintModal
+          visible={hintOpen}
+          stageKey={hintStage.key}
+          title={hintStage.title}
+          hints={hintStage.hints}
+          onDismiss={() => setHintOpen(false)}
+        />
+      )}
     </View>
   );
 }
@@ -258,6 +350,7 @@ const styles = StyleSheet.create({
   },
   topBtn: { backgroundColor: 'rgba(11,15,20,0.7)', paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: 8 },
   notebookBtn: { backgroundColor: 'rgba(11,15,20,0.7)', paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: 8 },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   topBtnText: { color: colors.paper, fontFamily: fonts.display, fontSize: 12 },
   sceneLabelBox: { backgroundColor: 'rgba(11,15,20,0.7)', paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: 8 },
   scrollView: { flex: 1, backgroundColor: colors.ink },
@@ -265,14 +358,14 @@ const styles = StyleSheet.create({
   sceneBox: { width: '100%', overflow: 'hidden' },
   sceneImage: { width: '100%', height: '100%' },
   dropTarget: { position: 'absolute' },
+  // No shadow here deliberately: this is an unclipped box around a
+  // transparent, irregularly-shaped (torn-page) cutout — a CSS box-shadow
+  // always follows the rectangular box, not the image's actual alpha
+  // silhouette, so it would show as a blurry halo in the transparent
+  // corners around the real shape instead of hugging it.
   placedPhoto: {
     position: 'absolute',
     borderRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
   },
   descriptionBox: {
     margin: spacing.md,

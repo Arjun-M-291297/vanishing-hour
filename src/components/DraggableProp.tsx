@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Image, ImageSource } from 'expo-image';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +25,18 @@ interface Props {
    * background, where a placeholder icon on top would just be a redundant,
    * button-looking blob sitting over the real art. */
   icon?: string;
+  /** How imageSource fills startBox: "cover" (default) crops to fill the
+   * box exactly, "contain" letterboxes instead so the whole image stays
+   * visible — for props whose box doesn't match the image's own aspect
+   * ratio closely enough for cropping to be acceptable. */
+  imageContentFit?: 'cover' | 'contain';
+  /** When true, imageSource only renders while an active drag gesture is
+   * in progress — invisible the rest of the time, but still draggable
+   * (same invisible-hitbox idea as the no-image case). For props whose
+   * art is already part of the scene background at their resting spot, so
+   * a visible sprite sitting on top of it at rest would just double it up
+   * — only useful once it's actually been picked up and moved away. */
+  hideWhenIdle?: boolean;
   onDropped: () => void;
   /** Fired on pointerdown/pointerup(-or-cancel) so a parent ScrollView can
    * disable scrolling for the duration of the drag — see the note above
@@ -68,7 +80,17 @@ function pointerPosition(nativeEvent: any): { x: number; y: number } {
  * position and the drop hit-test. Measuring the real target and comparing
  * against the release touch's actual page coordinates sidesteps that
  * entirely — both are true, live values, not estimates. */
-export function DraggableProp({ startBox, targetRef, imageSource, icon, onDropped, onDragStart, onDragEnd }: Props) {
+export function DraggableProp({
+  startBox,
+  targetRef,
+  imageSource,
+  icon,
+  imageContentFit = 'cover',
+  hideWhenIdle = false,
+  onDropped,
+  onDragStart,
+  onDragEnd,
+}: Props) {
   const pan = useRef(new Animated.ValueXY()).current;
   const settle = useRef(new Animated.Value(1)).current; // opacity/scale on a successful drop
   const currentPan = useRef({ x: 0, y: 0 });
@@ -79,6 +101,10 @@ export function DraggableProp({ startBox, targetRef, imageSource, icon, onDroppe
   // at their zeroed defaults) jumped the sprite to a huge bogus offset,
   // looking like it vanished.
   const dragging = useRef(false);
+  // A separate piece of REACT STATE (not the `dragging` ref above, which
+  // exists purely to guard gesture logic and doesn't trigger re-renders)
+  // — only needed when hideWhenIdle is on, to drive the image's opacity.
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const id = pan.addListener((value) => {
@@ -89,6 +115,7 @@ export function DraggableProp({ startBox, targetRef, imageSource, icon, onDroppe
 
   const handlePointerDown = (e: any) => {
     dragging.current = true;
+    if (hideWhenIdle) setIsDragging(true);
     const { x, y } = pointerPosition(e.nativeEvent);
     gestureStart.current = { x, y };
     panAtGestureStart.current = { ...currentPan.current };
@@ -120,6 +147,7 @@ export function DraggableProp({ startBox, targetRef, imageSource, icon, onDroppe
   const handlePointerUp = (e: any) => {
     if (!dragging.current) return;
     dragging.current = false;
+    if (hideWhenIdle) setIsDragging(false);
     onDragEnd?.();
     const { x: pageX, y: pageY } = pointerPosition(e.nativeEvent);
     targetRef.current?.measureInWindow((tx, ty, tw, th) => {
@@ -141,17 +169,24 @@ export function DraggableProp({ startBox, targetRef, imageSource, icon, onDroppe
   const handlePointerCancel = () => {
     if (!dragging.current) return;
     dragging.current = false;
+    if (hideWhenIdle) setIsDragging(false);
     onDragEnd?.();
     Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, friction: 7 }).start();
   };
 
-  const hasVisual = Boolean(imageSource || icon);
+  // Icon glyphs are roughly box-shaped, so a rectangular CSS shadow reads
+  // fine there. A cropped photo isn't — box-shadow always follows the
+  // element's rectangular bounds, not the image's actual alpha silhouette,
+  // so on an irregular (e.g. torn-page) cutout it shows as a blurry halo
+  // floating in the transparent corners around the real shape instead of
+  // hugging the object. Skipped for images for exactly that reason.
+  const showShadow = Boolean(icon) && !imageSource;
 
   return (
     <Animated.View
       style={[
         styles.drag,
-        hasVisual && styles.dragVisual,
+        showShadow && styles.dragVisual,
         webNoDragStyle,
         {
           left: `${startBox.x * 100}%`,
@@ -178,7 +213,12 @@ export function DraggableProp({ startBox, targetRef, imageSource, icon, onDroppe
         // react-native-web (same class of issue as the PanResponder bug
         // fixed earlier); this prop, by contrast, is confirmed to reach the
         // underlying <img> element.
-        <Image source={imageSource} style={styles.image} contentFit="cover" draggable={false} />
+        <Image
+          source={imageSource}
+          style={[styles.image, hideWhenIdle && !isDragging && styles.imageHidden]}
+          contentFit={imageContentFit}
+          draggable={false}
+        />
       ) : icon ? (
         <Text style={styles.icon}>{icon}</Text>
       ) : null}
@@ -219,5 +259,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   image: { width: '100%', height: '100%', borderRadius: 4 },
+  imageHidden: { opacity: 0 },
   icon: { fontSize: 22 },
 });
