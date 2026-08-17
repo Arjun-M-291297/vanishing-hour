@@ -1,5 +1,26 @@
 import { supabase } from './supabase';
 
+// A stored session can outlive its own `profiles` row — e.g. a Supabase
+// project's public schema getting reset/reseeded during development while a
+// device still has an old session persisted locally. The JWT itself stays
+// cryptographically valid (Supabase doesn't re-check the database just to
+// accept it), so the app carries on believing it's signed in until the
+// first write that references profiles.id hits a foreign key violation
+// (Postgres code 23503). Recovering from that locally isn't possible — the
+// row it needs will never appear — so the only way out is a fresh sign-in,
+// which is exactly what re-running the OAuth flow (e.g. in an incognito
+// window, or after clearing local storage) does.
+const STALE_SESSION_ERROR = 'Your session is out of date — signed you out. Please sign in again.';
+
+function isStaleSessionError(error: { code?: string } | null | undefined): boolean {
+  return error?.code === '23503';
+}
+
+async function recoverFromStaleSession(): Promise<{ error: string }> {
+  await supabase.auth.signOut();
+  return { error: STALE_SESSION_ERROR };
+}
+
 export interface RoomRow {
   id: string;
   code: string;
@@ -52,6 +73,7 @@ export async function createRoom(caseId = 'vanishing-hour'): Promise<{ room?: Ro
     const { data, error } = await supabase.rpc('create_room', { p_code: code, p_case_id: caseId });
 
     if (!error && data) return { room: data as RoomRow };
+    if (error && isStaleSessionError(error)) return recoverFromStaleSession();
     if (error && !error.message.includes('duplicate')) {
       return { error: error.message };
     }
@@ -82,6 +104,7 @@ export async function joinRoomByCode(
     .from('room_players')
     .insert({ room_id: room.id, user_id: userId });
 
+  if (seatError && isStaleSessionError(seatError)) return recoverFromStaleSession();
   // Already-seated (e.g. rejoining after a refresh) isn't an error.
   if (seatError && !seatError.message.includes('duplicate')) {
     return { error: seatError.message };
