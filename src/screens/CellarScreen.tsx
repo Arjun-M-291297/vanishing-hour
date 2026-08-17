@@ -19,6 +19,7 @@ import { CaseFileLabel, BodyText, Button } from '../components/ui';
 import { leaveRoom } from '../services/rooms';
 import { supabase } from '../services/supabase';
 import { fetchRoomProgress, subscribeToProgress } from '../services/progress';
+import { prefetchImages } from '../utils/prefetchImages';
 import { colors, fonts, spacing } from '../theme';
 import { DEV_SOLO_PREVIEW } from '../devFlags';
 
@@ -161,6 +162,22 @@ function minCoverScale(boxWpx: number, boxHpx: number, angleDeg: number) {
 const RED_FILM_START_BOX = { x: 0.1588, y: 0.3593, w: 0.2105, h: 0.098 };
 const RED_FILM_IMAGE = require('../../assets/scenes/red_film.png');
 const OVERRIDE_CODE = '3 9 0 7';
+
+// Every image this screen might show, warmed into expo-image's cache on
+// mount rather than only fetched the moment a state-driven swap actually
+// needs it — otherwise the first lever pull / trap / lantern-lit moment
+// pays a visible load delay right when it matters most dramatically.
+const CELLAR_PREFETCH_ASSETS = [
+  CELLAR_BG,
+  CELLAR_LEVER_DOWN_BG,
+  CELLAR_FLUORO_ON_BG,
+  CELLAR_LANTERN_ON_BG,
+  REVELATIONS.inspectorRevelation.image,
+  REVELATIONS.lampLitten.image,
+  RECEIVED_IMAGE,
+  RECEIVED_IMAGE_VERTICAL,
+  RED_FILM_IMAGE,
+];
 
 interface HintStage {
   key: string;
@@ -361,6 +378,10 @@ export function CellarScreen({ route, navigation }: Props) {
   });
 
   useEffect(() => {
+    prefetchImages(CELLAR_PREFETCH_ASSETS);
+  }, []);
+
+  useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
   }, []);
 
@@ -382,6 +403,14 @@ export function CellarScreen({ route, navigation }: Props) {
   }, [trapped, myUserId, roomId]);
 
   const handleObservation = (hotspot: Extract<Hotspot, { kind: 'observation' }>, alreadyFound: boolean) => {
+    // hotspot-2's box sits right where the joined photo (COMBINED_IMAGE_QUAD)
+    // later renders — once the code's been found, either by combining the
+    // photo (which supersedes this exact spot visually) or by opening the
+    // drawer straight from a hint, re-tapping the old "torn, needs its other
+    // half" fragment no longer makes sense.
+    if (hotspot.id === 'hotspot-2' && (imageCombined || solvedPuzzleIds.includes('hotspot-1'))) {
+      return;
+    }
     if (!alreadyFound) setCollectedClueIds((ids) => [...ids, hotspot.clue.id]);
     setActiveClue(hotspot.clue);
   };

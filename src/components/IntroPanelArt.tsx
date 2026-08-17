@@ -15,7 +15,7 @@ const PANEL_IMAGES: Record<IntroPanelVisual, ImageSource> = {
   twoSilhouettesDoor: require('../../assets/intro/3.jpg'),
   clockCloseup: require('../../assets/intro/4.jpg'),
   emptyStudyNight: require('../../assets/intro/5.jpg'),
-  stairSplit: require('../../assets/scenes/stair.png'),
+  stairSplit: require('../../assets/scenes/stair.jpg'),
 };
 
 export function IntroPanelArt({ visual }: Props) {

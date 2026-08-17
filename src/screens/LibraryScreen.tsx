@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,6 +17,7 @@ import { Toast } from '../components/Toast';
 import { CaseFileLabel, BodyText, Button } from '../components/ui';
 import { leaveRoom } from '../services/rooms';
 import { markPuzzleSolvedRemote } from '../services/progress';
+import { prefetchImages } from '../utils/prefetchImages';
 import { colors, fonts, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
@@ -31,6 +32,11 @@ const LIBRARY_LEVER_DOWN_BG = require('../../assets/scenes/library_lever_down.jp
 const LIBRARY_ASPECT_RATIO = 1456 / 720;
 const TORN_PAGE_IMAGE = require('../../assets/scenes/torn_image_lower.png');
 const DUMBWAITER_IMAGE = require('../../assets/scenes/dumbwaiter.jpg');
+
+// Every image this screen might show, warmed into expo-image's cache on
+// mount rather than only fetched the moment a state-driven swap needs it —
+// see the matching constant in CellarScreen.tsx.
+const LIBRARY_PREFETCH_ASSETS = [LIBRARY_LEVER_UP_BG, LIBRARY_LEVER_DOWN_BG, TORN_PAGE_IMAGE, DUMBWAITER_IMAGE];
 
 // hotspot-11's own position (drag start) and hotspot-16, the dumbwaiter
 // basket (drag target) — kept out of libraryHotspots since this isn't a
@@ -125,6 +131,10 @@ export function LibraryScreen({ route, navigation }: Props) {
   const [hintOpen, setHintOpen] = useState(false);
   const [showDumbwaiterRevelation, setShowDumbwaiterRevelation] = useState(false);
   const dropTargetRef = useRef<View>(null);
+
+  useEffect(() => {
+    prefetchImages(LIBRARY_PREFETCH_ASSETS);
+  }, []);
 
   const collectedClues = collectedClueIds.map((id) => clueRegistry[id]).filter((c): c is ClueEntry => Boolean(c));
   // hotspot-15 (the fallen book) is the Associate's own closing beat —

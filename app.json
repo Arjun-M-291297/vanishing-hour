@@ -27,7 +27,8 @@
     "plugins": [
       "expo-screen-orientation",
       "expo-web-browser",
-      "expo-image"
+      "expo-image",
+      "expo-asset"
     ],
     "extra": {
       "googleAuth": {

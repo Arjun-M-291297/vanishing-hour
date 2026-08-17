@@ -22,6 +22,7 @@ import { supabase } from '../services/supabase';
 import { fetchRoomProgress, markPuzzleSolvedRemote, subscribeToProgress } from '../services/progress';
 import { CHARACTER_OPTIONS } from '../data/characters';
 import { DEV_SOLO_PREVIEW } from '../devFlags';
+import { prefetchImages } from '../utils/prefetchImages';
 import { colors, fonts, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
@@ -35,6 +36,20 @@ const STUDY_BG = require('../../assets/scenes/study.jpeg');
 // ScrollView below is what makes the rest of the image and the hotspots on
 // it reachable, instead of clipping them.
 const STUDY_ASPECT_RATIO = 2;
+
+const STUDY_PREFETCH_ASSETS = [STUDY_BG, require('../../assets/scenes/stair.jpg')];
+// Warmed once the stair is revealed (see the "waiting for your partner"
+// effect below) rather than on this screen's own mount — Cellar/Library
+// aren't needed yet at that point, and the wait for the partner to catch up
+// is exactly the dead time to hide this cost behind instead.
+const NEXT_SCENE_PREFETCH_ASSETS = [
+  require('../../assets/scenes/cellar.jpg'),
+  require('../../assets/scenes/cellar_lever_down.jpg'),
+  require('../../assets/scenes/cellar_fluoro_on.jpg'),
+  require('../../assets/scenes/cellar_lantern_on.jpg'),
+  require('../../assets/scenes/library_lever_up.jpeg'),
+  require('../../assets/scenes/library_lever_down.jpeg'),
+];
 
 // The one hotspot whose solve reveals the shared stairwell — both players
 // must reach it before either can proceed, so it's the only puzzle in this
@@ -150,6 +165,18 @@ export function GameScreen({ route, navigation }: Props) {
     shelfNote: collectedClueIds.includes('shelfNote'),
     stairRevealed,
   });
+
+  useEffect(() => {
+    prefetchImages(STUDY_PREFETCH_ASSETS);
+  }, []);
+
+  // The stair reveal's own "waiting for your partner" delay is dead time
+  // for the local player anyway — spend it warming the cache for whichever
+  // scene (Cellar or Library) they're headed to next, so that screen's
+  // background doesn't pop in empty on arrival.
+  useEffect(() => {
+    if (stairRevealed) prefetchImages(NEXT_SCENE_PREFETCH_ASSETS);
+  }, [stairRevealed]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
@@ -278,8 +305,14 @@ export function GameScreen({ route, navigation }: Props) {
     navigation.goBack();
   };
 
+  // Inspector and Associate now have real destinations built (Cellar and
+  // Library), so they skip straight there — Beyond is only a fallback for
+  // an unrecognized characterId (e.g. the dev solo-preview flow), which has
+  // nowhere built to go.
   const handleContinueBeyond = () => {
-    navigation.replace('Beyond', { roomId, characterId });
+    if (characterId === 'inspector') navigation.replace('Cellar', { roomId, characterId });
+    else if (characterId === 'associate') navigation.replace('Library', { roomId, characterId });
+    else navigation.replace('Beyond', { roomId, characterId });
   };
 
   return (

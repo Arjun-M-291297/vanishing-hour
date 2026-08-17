@@ -55,7 +55,7 @@ export const libraryHotspots: Hotspot[] = [
       id: 'timestampBook',
       title: 'A Page of Times',
       detail:
-        'A passage, underlined in three places: "...he left at 04:15, called again at 09:42, and was last seen at 01:08...". Three timestamps. Whoever is below might only need the minutes.',
+        'A passage, underlined in three places: "...he left at 04:15, called again at 09:42, and was last seen at 01:08...". Three timestamps.',
       icon: '📖',
     },
   },
