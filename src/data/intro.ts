@@ -10,7 +10,7 @@ export const introSlides: IntroSlide[] = [
     id: 'slide1',
     visual: 'deskSilhouette',
     caption:
-      'Edmund Voss had spent thirty years building a life that ran on precision — a fortune, a reputation, a study no one entered uninvited. Then, for reasons he never spoke of, the precision slipped: reckless wagers, a fortune bleeding out one bet at a time. By the end, only two people besides himself held a key to that room — his housekeeper, Mara, and his brother, Silas. He trusted very little to memory, and even less to anyone else.',
+      'Edmund Voss built a life on precision — wealth, reputation, a private study no one entered uninvited. Then his luck turned: reckless bets, a fortune draining away. Only two people held a key to that room — his housekeeper Mara, and his brother Silas.',
   },
   {
     id: 'slide2',
@@ -18,7 +18,7 @@ export const introSlides: IntroSlide[] = [
     speaker: 'Edmund',
     speech: 'I keep losing pieces of the day. Just... gone.',
     caption:
-      "He told no one. Not even his brother. But Mara had started watching him more closely than a housekeeper should — she'd waited years for the partnership he kept promising her, and lately, waiting was starting to look like all she'd ever get.",
+      "He told no one — not even his brother. But Mara had started watching him closely. She'd waited years for the partnership he kept promising her. Lately, waiting felt like all she'd ever get.",
   },
   {
     id: 'slide3',
@@ -26,7 +26,7 @@ export const introSlides: IntroSlide[] = [
     speaker: 'Silas',
     speech: "You're not answering your letters, Edmund.",
     caption:
-      "Some doors, once closed, are hard to explain. Edmund had borrowed a small fortune from his brother, back when the wagers still felt like they'd turn around. Silas had his own reasons for wanting this one open.",
+      'Edmund had borrowed money from his brother, back when he thought his luck would turn. Now Silas wanted it back.',
   },
   {
     id: 'slide4',
@@ -40,6 +40,6 @@ export const introSlides: IntroSlide[] = [
     visual: 'emptyStudyNight',
     title: 'TONIGHT',
     caption:
-      'Edmund Voss is gone. The room remembers more than he could. Only two people crossed that threshold tonight — Mara, bringing supper as always, and Silas, come one last time to ask for his money back.',
+      'Edmund Voss is gone. Only two people came by tonight — Mara, bringing supper as always, and Silas, back one last time to ask for his money.',
   },
 ];

@@ -19,7 +19,7 @@ export const cellarHotspots: Hotspot[] = [
     flavorText: 'A small drawer set into the delivery bench, sealed with a four-digit combination lock.',
     solution: '3907',
     successMessage:
-      'The lock gives. Inside: a stamped train ticket to Blackwood Station, and — tucked beneath it — a ledger page. "DEBTOR: Edmund Voss." Numbers in a stranger\'s hand, a debt large enough to disappear over.',
+      'The lock gives. Inside: a train ticket to Blackwood Station, and a ledger page marked "DEBTOR: Edmund Voss." A debt big enough to disappear over.',
   },
   {
     id: 'hotspot-2',
@@ -122,7 +122,7 @@ export const cellarHotspots: Hotspot[] = [
       id: 'revealedSymbols',
       title: 'A Mark on the Wall',
       detail:
-        'With the lantern lit, a mark on the stone catches the light — four symbols, pressed in deliberately: ♥ ♣ ♠ ♦, in that order. Someone left this on purpose. Whoever finds the matching one upstairs needs to hear this, in order.',
+        'With the lantern lit, a mark on the wall catches the light: ♥ ♣ ♠ ♦, in that order. Tell your partner — they need this order upstairs.',
       icon: '🃏',
     },
   },

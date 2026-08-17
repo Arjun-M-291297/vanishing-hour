@@ -45,9 +45,9 @@ export function AuthScreen() {
             <Button title="Continue as Guest" variant="secondary" onPress={handleGuest} loading={busy === 'guest'} disabled={busy !== null} />
           </View>
 
-          {!googleConfigured && (
+          {/* {!googleConfigured && (
             <Text style={styles.hint}>Add your Google OAuth client IDs to app.json (see SETUP.md) to enable Google sign-in.</Text>
-          )}
+          )} */}
         </View>
       </ScrollView>
     </Screen>

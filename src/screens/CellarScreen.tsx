@@ -54,7 +54,7 @@ const REVELATIONS = {
     image: require('../../assets/scenes/inspector_revelation.jpg'),
     label: 'Debt and a Departure',
     caption:
-      'The lock gives. Inside: a stamped train ticket to Blackwood Station, and — tucked beneath it — a ledger page in a stranger\'s hand. "DEBTOR: Edmund Voss. Balance called in full. Assets subject to seizure if unpaid." Whoever Silas is, he wanted his money back, and Edmund didn\'t have it. A one-way ticket, bought and never used. He wasn\'t taken. He ran.',
+      'Inside the drawer: a train ticket to Blackwood Station, and a ledger page. "DEBTOR: Edmund Voss. Balance called in full." Silas wanted his money back — and Edmund didn\'t have it. A one-way ticket, never used. He wasn\'t taken. He ran.',
   },
   lampLitten: {
     image: require('../../assets/scenes/lamp_litten.jpg'),
@@ -687,9 +687,8 @@ export function CellarScreen({ route, navigation }: Props) {
             <View style={styles.escapeContent}>
               <CaseFileLabel style={styles.escapeLabel}>The Grill Door Gives Way</CaseFileLabel>
               <BodyText style={styles.escapeText}>
-                The padlock falls away. The grill door swings open onto the tunnel — and the tracks beyond lead
-                straight toward Blackwood Station. Whatever happens next, it happens on a train Edmund never should
-                have needed to catch alone.
+                The padlock falls away. The grill door swings open onto a tunnel — tracks leading straight to
+                Blackwood Station. The same train Edmund fled on.
               </BodyText>
               <Button title="Leave Room" variant="secondary" onPress={handleLeaveRoom} />
             </View>

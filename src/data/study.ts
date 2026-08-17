@@ -37,7 +37,7 @@ export const studyHotspots: Hotspot[] = [
       id: "stoppedClock",
       title: "Stopped Clock",
       detail:
-        "The mantel clock isn't broken — it's stopped on purpose, hour and minute hands held fast at eleven and twenty-three. Not midnight, when he vanished. Earlier. As if he needed to remember something under pressure, and trusted a clock more than his own memory.",
+        "The mantel clock isn't broken — someone stopped it on purpose, at 11:23. Not midnight, when he vanished. Earlier. As if he needed to remember something important.",
       icon: "🕚",
     },
   },
@@ -53,7 +53,7 @@ export const studyHotspots: Hotspot[] = [
       id: "prescriptionBottle",
       title: "Prescription Bottle",
       detail:
-        'Tucked behind the clock, half-hidden — a small amber bottle, prescribed three months ago. The label names a drug for memory. Early-onset Alzheimer\'s, though he never once wrote the word himself. Only ever "the trouble."',
+        'Hidden behind the clock: a bottle of memory medication, prescribed three months ago. Early-onset Alzheimer\'s — though he never once wrote the word himself. Only ever "the trouble."',
       icon: "💊",
     },
   },
@@ -69,7 +69,7 @@ export const studyHotspots: Hotspot[] = [
       id: "chairAshes",
       title: "Cold Ashes",
       detail:
-        'A worn reading chair beside the fireplace. The grate holds cold ashes — bank statements and old letters, by the curl of the scraps, burned before he left. One fragment survives, in a hurried hand: "...tell Silas I tried—" Nothing more.',
+        'Cold ashes in the fireplace — burned bank statements and letters. One scrap survives, in a hurried hand: "...tell Silas I tried—" Nothing more.',
       icon: "🪑",
     },
   },
@@ -85,7 +85,7 @@ export const studyHotspots: Hotspot[] = [
       id: "soupCup",
       title: "Bowl of Soup, Emptied",
       detail:
-        "A small side table, and on it, a bowl — Mara's doing, by the faint herbal smell still clinging to it. But it's empty. Wiped clean at the bottom: no film of dried broth, no spoon left resting in a half-finished meal. Not eaten. Poured out somewhere else, and set back down as if untouched.",
+        "A bowl of soup, made by Mara — but it's empty and wiped clean. No dried broth, no spoon left in it. It wasn't eaten. It was poured out somewhere else.",
       icon: "🥣",
     },
   },
@@ -101,7 +101,7 @@ export const studyHotspots: Hotspot[] = [
       id: "brandyGlasses",
       title: "Two Brandy Glasses",
       detail:
-        "Two glasses on the same table, not one. Edmund's, barely touched — a finger's width gone. The other, drained to the bottom and set down hard enough to chip the rim. Whatever was said in this room tonight, only one of them stayed calm.",
+        "Two glasses, not one. Edmund's is barely touched. The other is drained dry, set down hard enough to chip the rim. Someone in this room didn't stay calm.",
       icon: "🥃",
     },
   },
@@ -165,8 +165,7 @@ export const studyHotspots: Hotspot[] = [
       "A small brass fitting is set into the shelf's edge — four notches, each stamped with a different symbol. It wants to be turned in the order you saw them.",
     symbols: ["🌙", "💧", "⭐", "☀️"],
     solution: ["⭐", "🌙", "☀️", "💧"],
-    successMessage:
-      "The notches click round. The shelf shifts forward, just slightly — a hidden compartment. But what's inside isn't built yet.",
+    successMessage: "The notches click round. The shelf shifts forward, revealing a hidden staircase.",
   },
   {
     id: "passageDoor",

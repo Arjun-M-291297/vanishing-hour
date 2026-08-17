@@ -326,10 +326,8 @@ export function LibraryScreen({ route, navigation }: Props) {
             <View style={styles.endingContent}>
               <CaseFileLabel style={styles.endingLabel}>The Lock Gives Way</CaseFileLabel>
               <BodyText style={styles.endingText}>
-                The last symbol clicks into place, and the fallen book's cover falls still. Somewhere below, you
-                don't so much hear it as feel it — a distant mechanism releasing, iron swinging free on the
-                tunnel side. Whatever the Inspector finds down those tracks now is out of your hands. All that's
-                left is to see if Edmund Voss ever meant to come back at all.
+                The last symbol clicks into place. Somewhere below, you feel it more than hear it — iron swinging
+                free on the tunnel side. What the Inspector finds down those tracks is out of your hands now.
               </BodyText>
               <Button title="Leave Room" variant="secondary" onPress={handleLeaveRoom} />
             </View>
