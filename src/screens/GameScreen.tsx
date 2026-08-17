@@ -330,8 +330,8 @@ export function GameScreen({ route, navigation }: Props) {
               // Dummy shortcut for fast iteration on Cellar/Library while
               // they're being built — skips the whole puzzle chain instead
               // of re-solving it every reload. Gated behind the same dev
-              // flag as the solo-preview lobby buttons; flip that off before
-              // a real release and this disappears with it.
+              // flag as the solo-preview lobby buttons — see devFlags.ts,
+              // tied to __DEV__ so it can't ship enabled in production.
               <Pressable onPress={handleContinueBeyond} hitSlop={10} style={styles.topBtn}>
                 <Text style={styles.topBtnText}>⏭ Skip</Text>
               </Pressable>
