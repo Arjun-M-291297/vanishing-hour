@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +20,7 @@ import { leaveRoom } from '../services/rooms';
 import { supabase } from '../services/supabase';
 import { fetchRoomProgress, subscribeToProgress } from '../services/progress';
 import { prefetchImages } from '../utils/prefetchImages';
+import { useAppForeground } from '../utils/useAppForeground';
 import { colors, fonts, spacing } from '../theme';
 import { DEV_SOLO_PREVIEW } from '../devFlags';
 
@@ -385,22 +386,30 @@ export function CellarScreen({ route, navigation }: Props) {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
   }, []);
 
+  const checkGrill = useCallback(async () => {
+    if (!myUserId) return;
+    const rows = await fetchRoomProgress(roomId);
+    const unlocked = rows.some((row) => row.user_id !== myUserId && row.solved_puzzle_ids.includes('grillUnlocked'));
+    if (unlocked) {
+      setGrillUnlocked(true);
+      setCollectedClueIds((ids) => (ids.includes('grillUnlocked') ? ids : [...ids, 'grillUnlocked']));
+    }
+  }, [myUserId, roomId]);
+
   // Only worth subscribing once the door's actually locked — before that,
   // whether the Library has solved their half doesn't change anything the
   // player can do yet.
   useEffect(() => {
     if (!trapped || !myUserId) return;
-    const checkGrill = async () => {
-      const rows = await fetchRoomProgress(roomId);
-      const unlocked = rows.some((row) => row.user_id !== myUserId && row.solved_puzzle_ids.includes('grillUnlocked'));
-      if (unlocked) {
-        setGrillUnlocked(true);
-        setCollectedClueIds((ids) => (ids.includes('grillUnlocked') ? ids : [...ids, 'grillUnlocked']));
-      }
-    };
     checkGrill();
     return subscribeToProgress(roomId, checkGrill);
-  }, [trapped, myUserId, roomId]);
+  }, [trapped, myUserId, roomId, checkGrill]);
+
+  // Realtime doesn't replay what happened while backgrounded — re-check on
+  // every foreground return, not just once when trapped first becomes true.
+  useAppForeground(() => {
+    if (trapped) checkGrill();
+  });
 
   const handleObservation = (hotspot: Extract<Hotspot, { kind: 'observation' }>, alreadyFound: boolean) => {
     // hotspot-2's box sits right where the joined photo (COMBINED_IMAGE_QUAD)

@@ -14,6 +14,7 @@ import {
 } from '../services/rooms';
 import { supabase } from '../services/supabase';
 import { CHARACTER_OPTIONS } from '../data/characters';
+import { useAppForeground } from '../utils/useAppForeground';
 import { colors, fonts, radii, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Room'>;
@@ -48,6 +49,11 @@ export function RoomScreen({ route, navigation }: Props) {
     const unsubscribe = subscribeToRoom(roomId, refresh);
     return unsubscribe;
   }, [roomId, refresh]);
+
+  // Realtime doesn't replay what happened while backgrounded — e.g. the
+  // partner readying up while this player's app was backgrounded. Re-check
+  // on every foreground return rather than trusting the subscription alone.
+  useAppForeground(refresh);
 
   const me = players.find((p) => p.user_id === myUserId);
   const partner = players.find((p) => p.user_id !== myUserId);

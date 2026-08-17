@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -23,6 +23,7 @@ import { fetchRoomProgress, markPuzzleSolvedRemote, subscribeToProgress } from '
 import { CHARACTER_OPTIONS } from '../data/characters';
 import { DEV_SOLO_PREVIEW } from '../devFlags';
 import { prefetchImages } from '../utils/prefetchImages';
+import { useAppForeground } from '../utils/useAppForeground';
 import { colors, fonts, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
@@ -182,21 +183,31 @@ export function GameScreen({ route, navigation }: Props) {
     supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
   }, []);
 
+  const checkPartnerAtStair = useCallback(async () => {
+    if (!myUserId) return;
+    const rows = await fetchRoomProgress(roomId);
+    const partnerThere = rows.some(
+      (row) => row.user_id !== myUserId && row.solved_puzzle_ids.includes(STAIR_TRIGGER_HOTSPOT_ID)
+    );
+    setPartnerAtStair(partnerThere);
+  }, [myUserId, roomId]);
+
   // Only subscribed once the local player has actually reached the stair
   // reveal — there's nothing to react to before then, and it avoids an
   // unnecessary realtime channel for the rest of the scene.
   useEffect(() => {
     if (!stairRevealed || !myUserId) return;
-    const checkPartner = async () => {
-      const rows = await fetchRoomProgress(roomId);
-      const partnerThere = rows.some(
-        (row) => row.user_id !== myUserId && row.solved_puzzle_ids.includes(STAIR_TRIGGER_HOTSPOT_ID)
-      );
-      setPartnerAtStair(partnerThere);
-    };
-    checkPartner();
-    return subscribeToProgress(roomId, checkPartner);
-  }, [stairRevealed, myUserId, roomId]);
+    checkPartnerAtStair();
+    return subscribeToProgress(roomId, checkPartnerAtStair);
+  }, [stairRevealed, myUserId, roomId, checkPartnerAtStair]);
+
+  // Realtime doesn't replay what happened while backgrounded, and the
+  // partner reaching the stair while this player's app was backgrounded is
+  // exactly the kind of update that's easy to miss that way — re-check on
+  // every foreground return, not just once at the reveal.
+  useAppForeground(() => {
+    if (stairRevealed) checkPartnerAtStair();
+  });
 
   const handleObservation = (hotspot: Extract<Hotspot, { kind: 'observation' }>, alreadyFound: boolean) => {
     if (!alreadyFound) setCollectedClueIds((ids) => [...ids, hotspot.clue.id]);
