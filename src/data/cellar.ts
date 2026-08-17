@@ -24,7 +24,7 @@ export const cellarHotspots: Hotspot[] = [
   {
     id: 'hotspot-2',
     kind: 'observation',
-    label: 'Torn Page — Lower Half',
+    label: 'Torn Page — Upper Half',
     // Bounding box of the page's true (skewed, non-axis-aligned) outline
     // on the new art — HotspotLayer only supports rects, so this is the
     // tightest rect around the quad the page actually occupies.
@@ -33,10 +33,10 @@ export const cellarHotspots: Hotspot[] = [
     w: 0.1517,
     h: 0.1178,
     clue: {
-      id: 'cellarPhotoBottom',
-      title: 'Torn Page — Lower Half',
+      id: 'cellarPhotoTop',
+      title: 'Torn Page — Upper Half',
       detail:
-        "The bottom half of a handwritten page, torn clean across the middle. On its own it reads like nothing — half-sentences, no context. It needs its other half.",
+        "The top half of a handwritten page, torn clean across the middle. On its own it reads like nothing — half-sentences, no context. It needs its other half.",
       icon: '📄',
     },
   },
