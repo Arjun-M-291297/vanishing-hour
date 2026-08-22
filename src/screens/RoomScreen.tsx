@@ -67,9 +67,22 @@ export function RoomScreen({ route, navigation }: Props) {
       supabase.from('rooms').update({ status: 'active' }).eq('id', roomId).then(() => {});
     }
     if (room?.status === 'active') {
-      navigation.replace('Intro', { roomId, characterId: me?.character_id ?? undefined });
+      const characterId = me?.character_id ?? undefined;
+      if (room.case_id === 'blackwood-station') {
+        // Chapter 2's only built scene so far is the Inspector's platform —
+        // the Associate has nowhere real to go yet (see navigation/types.ts
+        // and StationScreen's own comment), so they land on Beyond's
+        // fallback instead of a broken/wrong-themed screen.
+        if (characterId === 'inspector') {
+          navigation.replace('Station', { roomId, characterId });
+        } else {
+          navigation.replace('Beyond', { roomId, characterId });
+        }
+      } else {
+        navigation.replace('Intro', { roomId, characterId });
+      }
     }
-  }, [bothReady, room?.status, roomId, navigation, me?.character_id]);
+  }, [bothReady, room?.status, room?.case_id, roomId, navigation, me?.character_id]);
 
   const handleClaim = async (characterId: string) => {
     setBusy(true);

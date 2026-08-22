@@ -100,4 +100,45 @@ export interface SymbolLockHotspot extends HotspotBase {
   successMessage: string;
 }
 
-export type Hotspot = ObservationHotspot | ComingSoonHotspot | NumberLockHotspot | SymbolLockHotspot;
+/** Chapter 3 (Blackwood Station): a hotspot requiring BOTH players to arm
+ * their own matching signal within `windowMs` of each other — solved only
+ * if both arm-timestamps land close together, not just both eventually
+ * true. Backed by shared_case_state.deduction_selections under a
+ * `signalArmedAt` key (object keyed by characterId, each value an ISO
+ * timestamp or null) via the update_shared_state RPC — see
+ * 0006_shared_case_state_merge.sql for why a plain client read-modify-write
+ * isn't safe here. Both players see the same hotspot definition; each
+ * renders/drives it from their own character's point of view (that's a
+ * runtime concern for the modal component, not scene data). */
+export interface SyncSignalHotspot extends HotspotBase {
+  kind: 'syncSignal';
+  puzzleTitle: string;
+  flavorText: string;
+  windowMs: number; // how close together both arm-timestamps must land
+  successMessage: string;
+  missedMessage: string; // shown if the partner armed but the window lapsed
+}
+
+/** Chapter 3's closing beat: both players pick from the same shortlist of
+ * conclusions, writing into shared_case_state.deduction_selections under a
+ * `deductionBoard` key (object keyed by characterId). Solved once BOTH
+ * players have picked the SAME correct option — picking the wrong one, or
+ * disagreeing, doesn't fail the puzzle outright, it just doesn't solve yet
+ * (this is a discussion prompt players work out together, not a
+ * guess-and-check lock with a penalty for a wrong guess). */
+export interface SharedBoardHotspot extends HotspotBase {
+  kind: 'sharedBoard';
+  puzzleTitle: string;
+  flavorText: string;
+  options: { id: string; label: string }[];
+  solutionOptionId: string;
+  successMessage: string;
+}
+
+export type Hotspot =
+  | ObservationHotspot
+  | ComingSoonHotspot
+  | NumberLockHotspot
+  | SymbolLockHotspot
+  | SyncSignalHotspot
+  | SharedBoardHotspot;

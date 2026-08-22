@@ -332,7 +332,7 @@ const clueRegistry: Record<string, ClueEntry> = Object.fromEntries(
 );
 
 export function CellarScreen({ route, navigation }: Props) {
-  const { roomId } = route.params;
+  const { roomId, characterId } = route.params;
 
   // collectedClueIds doubles as the gate-flag store: real clue ids from
   // observation hotspots, plus three synthetic markers pushed here directly
@@ -554,6 +554,10 @@ export function CellarScreen({ route, navigation }: Props) {
     navigation.popToTop();
   };
 
+  const handleContinueToStation = () => {
+    navigation.replace('Station', { roomId, characterId });
+  };
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.overlay}>
@@ -690,7 +694,10 @@ export function CellarScreen({ route, navigation }: Props) {
                 The padlock falls away. The grill door swings open onto a tunnel — tracks leading straight to
                 Blackwood Station. The same train Edmund fled on.
               </BodyText>
-              <Button title="Leave Room" variant="secondary" onPress={handleLeaveRoom} />
+              <View style={styles.escapeActions}>
+                <Button title="Continue" onPress={handleContinueToStation} />
+                <Button title="Leave Room" variant="secondary" onPress={handleLeaveRoom} />
+              </View>
             </View>
           </SafeAreaView>
         </View>
@@ -780,6 +787,7 @@ const styles = StyleSheet.create({
   escapeOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.ink },
   escapeSafe: { flex: 1 },
   escapeContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
+  escapeActions: { width: '100%', maxWidth: 320, gap: spacing.sm },
   escapeLabel: { marginBottom: spacing.md },
   escapeText: { textAlign: 'center', maxWidth: 480, marginBottom: spacing.xl },
 });

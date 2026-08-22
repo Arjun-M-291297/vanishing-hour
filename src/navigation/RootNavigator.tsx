@@ -12,6 +12,7 @@ import { GameScreen } from '../screens/GameScreen';
 import { BeyondScreen } from '../screens/BeyondScreen';
 import { CellarScreen } from '../screens/CellarScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { StationScreen } from '../screens/StationScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,6 +41,7 @@ export function RootNavigator() {
             <Stack.Screen name="Beyond" component={BeyondScreen} />
             <Stack.Screen name="Cellar" component={CellarScreen} />
             <Stack.Screen name="Library" component={LibraryScreen} />
+            <Stack.Screen name="Station" component={StationScreen} />
           </>
         )}
       </Stack.Navigator>

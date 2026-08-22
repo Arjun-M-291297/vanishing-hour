@@ -10,6 +10,8 @@ interface Props {
   onComingSoon: (hotspot: Extract<Hotspot, { kind: 'comingSoon' }>) => void;
   onNumberLock: (hotspot: Extract<Hotspot, { kind: 'numberLock' }>) => void;
   onSymbolLock: (hotspot: Extract<Hotspot, { kind: 'symbolLock' }>) => void;
+  onSyncSignal?: (hotspot: Extract<Hotspot, { kind: 'syncSignal' }>) => void;
+  onSharedBoard?: (hotspot: Extract<Hotspot, { kind: 'sharedBoard' }>) => void;
   onLocked: (hotspot: Hotspot) => void;
 }
 
@@ -29,6 +31,8 @@ export function HotspotLayer({
   onComingSoon,
   onNumberLock,
   onSymbolLock,
+  onSyncSignal,
+  onSharedBoard,
   onLocked,
 }: Props) {
   return (
@@ -49,6 +53,8 @@ export function HotspotLayer({
           if (hotspot.kind === 'observation') onObservation(hotspot, alreadyFound);
           else if (hotspot.kind === 'numberLock') onNumberLock(hotspot);
           else if (hotspot.kind === 'symbolLock') onSymbolLock(hotspot);
+          else if (hotspot.kind === 'syncSignal') onSyncSignal?.(hotspot);
+          else if (hotspot.kind === 'sharedBoard') onSharedBoard?.(hotspot);
           else onComingSoon(hotspot);
         };
 
